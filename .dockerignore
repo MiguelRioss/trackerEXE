@@ -1,0 +1,10 @@
+node_modules
+npm-debug.log
+*.log
+.env
+*.local
+.git
+.gitignore
+Dockerfile
+.dockerignore
+tracker.exe

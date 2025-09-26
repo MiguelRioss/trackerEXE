@@ -1,0 +1,16 @@
+{
+  "name": "ctt-tracker",
+  "version": "1.0.0",
+  "main": "index.cjs",
+  "dependencies": {
+    "dotenv": "^17.2.2",
+    "node-fetch": "^3.3.2",
+    "puppeteer": "^24.22.3"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  },
+  "scripts": {
+    "build:exe": "pkg index.cjs --targets node18-win-x64 --output tracker.exe"
+  }
+}
