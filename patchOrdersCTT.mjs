@@ -1,8 +1,7 @@
-// patchOrdersCTT.mjs
 import { buildCttUrl } from "./lib/buildCttUrl.mjs";
 import { fetchOrders } from "./lib/fetchOrders.mjs";
 import { getLeftDatedWords } from "./lib/getLeftDatedWords.mjs";
-import transformLeftRowsToStatus  from "./lib/transformLeftRowsToStatus.mjs";
+import transformLeftRowsToStatus from "./lib/transformLeftRowsToStatus.mjs";
 
 const BASE = "https://api-backend-mesodose-2.onrender.com";
 const CONCURRENCY = 3; // how many run in parallel
@@ -20,7 +19,11 @@ async function httpPatch(orderId, body) {
   });
   const txt = await res.text().catch(() => "");
   if (!res.ok) throw new Error(`PATCH ${url} -> ${res.status} ${txt}`);
-  try { return JSON.parse(txt); } catch { return { raw: txt }; }
+  try {
+    return JSON.parse(txt);
+  } catch {
+    return { raw: txt };
+  }
 }
 
 function extractRT(order) {
@@ -52,7 +55,7 @@ async function processOrder(order) {
   const rt = extractRT(order);
   if (!rt) {
     console.log(`Order ${order.id} -> no RT code, skip`);
-    return;
+    return { orderId: order.id, status: "skipped", reason: "missing-rt" };
   }
 
   console.log(`Order ${order.id} -> tracking ${rt}`);
@@ -60,37 +63,111 @@ async function processOrder(order) {
   const rows = await getLeftDatedWords(url);
   const status = transformLeftRowsToStatus(rows);
 
-  const changes = {changes : {status}}
+  const changes = { changes: { status } };
   const patched = await httpPatch(order.id, changes);
   console.log(`Patched order ${order.id}:`, patched);
-  return patched;
+  return { orderId: order.id, status: "patched", payload: patched };
 }
 
-async function run() {
+export async function run() {
+  const startedAt = new Date();
   const orders = await fetchOrders();
   console.log(`Fetched ${orders.length} orders.`);
 
   const queue = [...orders];
   const results = [];
+  const failures = [];
 
   async function worker() {
     while (queue.length) {
       const order = queue.shift();
       try {
-        results.push(await processOrder(order));
+        const outcome = await processOrder(order);
+        results.push(outcome);
       } catch (e) {
+        const failure = { orderId: order.id, message: e.message };
+        failures.push(failure);
         console.error(`Failed order ${order.id}:`, e.message);
       }
     }
   }
 
-  // spawn workers
   await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
 
   console.log("All done.");
+  const finishedAt = new Date();
+
+  const patchedCount = results.filter((item) => item?.status === "patched").length;
+  const skippedCount = results.filter((item) => item?.status === "skipped").length;
+
+  return {
+    startedAt: startedAt.toISOString(),
+    finishedAt: finishedAt.toISOString(),
+    totalOrders: orders.length,
+    processed: results.length,
+    patched: patchedCount,
+    skipped: skippedCount,
+    failures,
+    results,
+  };
 }
 
-run().catch((e) => {
-  console.error("Fatal:", e.message);
-  process.exit(1);
-});
+let activeRunPromise = null;
+let activeRunMeta = null;
+let lastRunSummary = null;
+
+export function isRunInProgress() {
+  return Boolean(activeRunPromise);
+}
+
+export function getLastRunSummary() {
+  return lastRunSummary;
+}
+
+export function triggerRun({ wait = false } = {}) {
+  if (activeRunPromise) {
+    return wait
+      ? activeRunPromise
+      : {
+          started: false,
+          status: "already-running",
+          startedAt: activeRunMeta?.startedAt || lastRunSummary?.startedAt || null,
+        };
+  }
+
+  const startedAt = new Date().toISOString();
+  activeRunMeta = { startedAt };
+
+  const runPromise = (async () => {
+    try {
+      const summary = await run();
+      lastRunSummary = { ok: true, ...summary };
+      return lastRunSummary;
+    } catch (error) {
+      const finishedAt = new Date().toISOString();
+      const failureSummary = {
+        ok: false,
+        error: error.message || String(error),
+        startedAt,
+        finishedAt,
+      };
+      lastRunSummary = failureSummary;
+      throw error;
+    } finally {
+      activeRunPromise = null;
+      activeRunMeta = null;
+    }
+  })();
+
+  activeRunPromise = runPromise;
+
+  runPromise.catch((err) => {
+    console.error("Trigger run failed:", err && err.stack ? err.stack : err);
+  });
+
+  if (wait) return activeRunPromise;
+
+  return { started: true, status: "in-progress", startedAt };
+}
+
+export default run;
