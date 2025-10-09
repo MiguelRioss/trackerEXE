@@ -51,7 +51,7 @@ function extractRT(order) {
   return candidates[0] || null;
 }
 
-async function processOrder(order) {
+export async function processOrder(order) {
   const rt = extractRT(order);
   if (!rt) {
     console.log(`Order ${order.id} -> no RT code, skip`);
