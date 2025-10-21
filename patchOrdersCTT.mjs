@@ -1,4 +1,4 @@
-import { buildCttUrl } from "./lib/buildCttUrl.mjs";
+﻿import { buildCttUrl } from "./lib/buildCttUrl.mjs";
 import { fetchOrders } from "./lib/fetchOrders.mjs";
 import { getLeftDatedWords } from "./lib/getLeftDatedWords.mjs";
 import transformLeftRowsToStatus from "./lib/transformLeftRowsToStatus.mjs";
@@ -61,6 +61,7 @@ export async function processOrder(order) {
   console.log(`Order ${order.id} -> tracking ${rt}`);
   const url = buildCttUrl(rt);
   const rows = await getLeftDatedWords(url);
+ console.log("CTT rows", rows);
   const status = transformLeftRowsToStatus(rows);
 
   const changes = { changes: { status } };
