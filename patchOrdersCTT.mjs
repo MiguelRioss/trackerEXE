@@ -33,18 +33,14 @@ async function httpPatch(orderId, body) {
 function extractRT(order) {
   if (!order) return null;
 
-  // Accept RT / RU, allow spaces or dashes between chunks, case-insensitive
-  // e.g., "rt 123-456-789 pt" -> "RT123456789PT"
-  const CODE_RE = /\bR[UT][\s-]?\d{3}[\s-]?\d{3}[\s-]?\d{3}[\s-]?PT\b/i;
+  // Match RU...PT or RT...PT (tolerate spaces/dashes in between)
+  const SIMPLE_RE = /\bR[UT][A-Z0-9\-\s]*PT\b/i;
+  const normalize = (s) =>
+    String(s)
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, ""); // strip spaces/dashes
 
-  const normalize = (s) => s.toUpperCase().replace(/[^A-Z0-9]/g, ""); // strip spaces/dashes
-  const findInString = (s) => {
-    if (typeof s !== "string") return null;
-    const m = s.match(CODE_RE);
-    return m ? normalize(m[0]) : null;
-  };
-
-  // 1) Fast-path known fields
+  // Quick known fields first
   const candidates = [
     order.tracking_code,
     order.trackingCode,
@@ -57,36 +53,19 @@ function extractRT(order) {
     order.meta?.ctt_code,
   ].filter(Boolean);
 
-  for (const c of candidates) {
-    const code = findInString(c);
-    if (code) return code;
+  for (const v of candidates) {
+    const m = String(v).match(SIMPLE_RE);
+    if (m) return normalize(m[0]);
   }
 
-  // 2) Deep scan all values (strings anywhere)
-  const seen = new Set();
-  function deepScan(val, depth = 0) {
-    if (depth > 5 || val == null) return null;
-    if (typeof val === "string") return findInString(val);
-    if (typeof val !== "object") return null;
-    if (seen.has(val)) return null;
-    seen.add(val);
-
-    if (Array.isArray(val)) {
-      for (const v of val) {
-        const code = deepScan(v, depth + 1);
-        if (code) return code;
-      }
-      return null;
-    }
-
-    for (const v of Object.values(val)) {
-      const code = deepScan(v, depth + 1);
-      if (code) return code;
-    }
-    return null;
+  // Shallow scan of top-level string values (keep it simple)
+  for (const v of Object.values(order)) {
+    if (typeof v !== "string") continue;
+    const m = v.match(SIMPLE_RE);
+    if (m) return normalize(m[0]);
   }
 
-  return deepScan(order);
+  return null;
 }
 
 export async function processOrder(order) {
