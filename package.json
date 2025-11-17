@@ -5,10 +5,11 @@
   "dependencies": {
     "dotenv": "^17.2.2",
     "node-fetch": "^3.3.2",
-    "puppeteer": "^24.22.3"
+    "puppeteer-core": "^24.29.1"
   },
   "devDependencies": {
-    "pkg": "^5.8.1"
+    "pkg": "^5.8.1",
+    "pm2": "^6.0.13"
   },
   "scripts": {
     "build:exe": "pkg index.cjs --targets node18-win-x64 --output tracker.exe"
