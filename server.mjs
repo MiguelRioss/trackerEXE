@@ -3,7 +3,6 @@ import http from "http";
 import { parse } from "url";
 import { fetchOrders } from "./lib/fetchOrders.mjs";
 import { processOrder } from "./patchOrdersCTT.mjs";
-
 const PORT = process.env.PORT || 3000;
 
 const server = http.createServer(async (req, res) => {
