@@ -30,11 +30,11 @@ async function httpPatch(orderId, body) {
   }
 }
 
-function extractRT(order) {
+function extractTracking(order) {
   if (!order) return null;
 
-  // Match RU...PT or RT...PT (tolerate spaces/dashes in between)
-  const SIMPLE_RE = /\bR[UT][A-Z0-9\-\s]*PT\b/i;
+  // Match RT/RU/LA/LL/RL...PT (tolerate spaces/dashes in between)
+  const SIMPLE_RE = /\b(?:RT|RU|LA|LL|RL)[A-Z0-9\-\s]*PT\b/i;
   const normalize = (s) =>
     String(s)
       .toUpperCase()
@@ -69,14 +69,14 @@ function extractRT(order) {
 }
 
 export async function processOrder(order) {
-  const rt = extractRT(order);
-  if (!rt) {
-    console.log(`Order ${order.id} -> no RT code, skip`);
-    return { orderId: order.id, status: "skipped", reason: "missing-rt" };
+  const tracking = extractTracking(order);
+  if (!tracking) {
+    console.log(`Order ${order.id} -> no tracking code, skip`);
+    return { orderId: order.id, status: "skipped", reason: "missing-tracking" };
   }
 
-  console.log(`Order ${order.id} -> tracking ${rt}`);
-  const url = buildCttUrl(rt);
+  console.log(`Order ${order.id} -> tracking ${tracking}`);
+  const url = buildCttUrl(tracking);
   const rows = await getLeftDatedWords(url);
   console.log("CTT rows", rows);
   const status = transformLeftRowsToStatus(rows);
