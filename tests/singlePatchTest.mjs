@@ -5,7 +5,7 @@ import { processOrder } from "../patchOrdersCTT.mjs";
 function usage() {
   console.log(
     [
-      "Usage: node tests/singlePatchTest.mjs [--order-id <id>] [--tracking <RU/RT...PT>]",
+      "Usage: node tests/singlePatchTest.mjs [--order-id <id>] [--tracking <RU/RT/LA/LL/RL...PT>]",
       "If no arguments are provided, the first fetched order is used.",
     ].join("\n"),
   );
@@ -44,7 +44,7 @@ function parseArgs(argv) {
 /* ----------------- tracking helpers ----------------- */
 
 // Accept RU/RT … PT, allow spaces/dashes in between, case-insensitive
-const TRACK_RE = /\bR[UT][A-Z0-9\-\s]*PT\b/i;
+const TRACK_RE = /\b(?:RT|RU|LA|LL|RL)[A-Z0-9\-\s]*PT\b/i;
 const normalizeCode = (s) => String(s).toUpperCase().replace(/[^A-Z0-9]/g, "");
 
 /**

@@ -1,7 +1,7 @@
 // tests/testExtractRT.mjs
-function extractRT(order) {
+function extractTracking(order) {
   if (!order) return null;
-  const SIMPLE_RE = /\bR[UT][A-Z0-9\-\s]*PT\b/i;
+  const SIMPLE_RE = /\b(?:RT|RU|LA|LL|RL)[A-Z0-9\-\s]*PT\b/i;
   const normalize = (s) => String(s).toUpperCase().replace(/[^A-Z0-9]/g, "");
 
   const candidates = [
@@ -35,6 +35,9 @@ const cases = [
   { name: "Simple RT", order: { tracking_code: "RT123456789PT" }, expect: "RT123456789PT" },
   { name: "Simple RU", order: { tracking_code: "RU784434691PT" }, expect: "RU784434691PT" },
   { name: "Spaces/dashes", order: { tracking_code: "ru 784-434-691 pt" }, expect: "RU784434691PT" },
+  { name: "Simple LA", order: { tracking_code: "LA132327214PT" }, expect: "LA132327214PT" },
+  { name: "Simple LL", order: { tracking_code: "LL132327214PT" }, expect: "LL132327214PT" },
+  { name: "Simple RL", order: { tracking_code: "RL132327214PT" }, expect: "RL132327214PT" },
   { name: "In shipping nested", order: { shipping: { tracking_code: "Rt-999 888 777-pt" } }, expect: "RT999888777PT" },
   { name: "In meta alt key", order: { meta: { ctt_code: "ru123 123 123pt" } }, expect: "RU123123123PT" },
   { name: "Buried in string field", order: { note: "customer sent code: RU 111-222-333 PT yesterday" }, expect: "RU111222333PT" },
@@ -44,7 +47,7 @@ const cases = [
 
 let passed = 0;
 for (const t of cases) {
-  const got = extractRT(t.order);
+  const got = extractTracking(t.order);
   const ok = got === t.expect;
   console.log(`${ok ? "✅" : "❌"} ${t.name}:`, { expect: t.expect, got });
   if (ok) passed++;
